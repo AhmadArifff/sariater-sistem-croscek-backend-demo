@@ -261,8 +261,8 @@ export async function registerUser(req, res) {
       return res.status(400).json({ error: "username, password, nama, role wajib diisi" });
     }
 
-    if (!["admin", "staff"].includes(role)) {
-      return res.status(400).json({ error: "Role hanya boleh 'admin' atau 'staff'" });
+    if (!["admin", "staff", "guest"].includes(role)) {
+      return res.status(400).json({ error: "Role hanya boleh 'admin', 'staff', atau 'guest'" });
     }
 
     if (!/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
@@ -401,8 +401,8 @@ export async function updateUser(req, res) {
     const { nama, role, password } = req.body;
 
     // Validate role if provided
-    if (role && !["admin", "staff"].includes(role)) {
-      return res.status(400).json({ error: "Role hanya boleh 'admin' atau 'staff'" });
+    if (role && !["admin", "staff", "guest"].includes(role)) {
+      return res.status(400).json({ error: "Role hanya boleh 'admin', 'staff', atau 'guest'" });
     }
 
     // Validate password if provided

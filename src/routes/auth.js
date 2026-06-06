@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, adminOnly } from "../middleware/auth.js";
+import { authenticate, adminOnly, adminGuestRead } from "../middleware/auth.js";
 import {
   login,
   registerUser,
@@ -20,7 +20,7 @@ router.post("/register-admin",               registerAdmin);  // PUBLIC - ONE TI
 router.post("/register",         ...adminOnly, registerUser);
 router.post("/users",            ...adminOnly, registerUser);  // Create new user (alias for /register)
 router.get("/me",                authenticate, getMe);
-router.get("/users",             ...adminOnly, getUsers);
+router.get("/users",             ...adminGuestRead, getUsers);
 router.put("/users/:id/toggle-active", ...adminOnly, toggleUserActive);
 router.put("/users/:id/toggle",        ...adminOnly, toggleUserActive); // Backward compatibility
 router.put("/users/:id",         ...adminOnly, updateUser);      // Update user (nama, role, password)

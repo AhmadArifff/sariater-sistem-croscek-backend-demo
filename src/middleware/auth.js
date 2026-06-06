@@ -72,3 +72,19 @@ export const adminOnly = [authenticate, requireRole("admin")];
 // SHORTHAND MIDDLEWARE: Admin & Staf
 // =============================================
 export const adminAndStaf = [authenticate, requireRole("admin", "staff")];
+
+// =============================================
+// SHORTHAND MIDDLEWARE: Semua role aktif
+// =============================================
+export const authenticatedRoles = [authenticate, requireRole("admin", "staff", "guest")];
+
+// =============================================
+// SHORTHAND MIDDLEWARE: Admin & Staff write access
+// =============================================
+export const writeAccess = [authenticate, requireRole("admin", "staff")];
+
+// =============================================
+// SHORTHAND MIDDLEWARE: Admin & Guest read access
+// Untuk menu yang tetap terbatas bagi staff, tetapi guest boleh read-only.
+// =============================================
+export const adminGuestRead = [authenticate, requireRole("admin", "guest")];

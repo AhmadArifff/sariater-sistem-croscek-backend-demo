@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import { authenticatedRoles, writeAccess } from "../middleware/auth.js";
 
 // ── Jadwal controllers ─────────────────────────────────────
 import {
@@ -59,25 +60,25 @@ const upload = multer({
 // =============================================
 // JADWAL KARYAWAN ROUTES
 // =============================================
-router.get("/jadwal-karyawan/list",             getJadwalKaryawan);
-router.post("/jadwal-karyawan/create",          createJadwalKaryawan);
-router.put("/jadwal-karyawan/update/:no",       updateJadwalKaryawan);
-router.delete("/jadwal-karyawan/delete/:no",    deleteJadwalKaryawan);
-router.delete("/jadwal-karyawan/delete-period", deleteJadwalPeriodKaryawan);
-router.post("/jadwal-karyawan/clear",           clearJadwalKaryawan);
-router.post("/import-jadwal-karyawan",          upload.single("file"), importJadwalKaryawan);
-router.post("/import-jadwal-karyawan-pin",      upload.single("file"), importJadwalKaryawanPin); // PIN-based
-router.post("/import-jadwal-karyawan-smartmatch", upload.single("file"), importJadwalKaryawanSmartMatch); // NEW: Smart NIK/id_absen
+router.get("/jadwal-karyawan/list",             ...authenticatedRoles, getJadwalKaryawan);
+router.post("/jadwal-karyawan/create",          ...writeAccess, createJadwalKaryawan);
+router.put("/jadwal-karyawan/update/:no",       ...writeAccess, updateJadwalKaryawan);
+router.delete("/jadwal-karyawan/delete/:no",    ...writeAccess, deleteJadwalKaryawan);
+router.delete("/jadwal-karyawan/delete-period", ...writeAccess, deleteJadwalPeriodKaryawan);
+router.post("/jadwal-karyawan/clear",           ...writeAccess, clearJadwalKaryawan);
+router.post("/import-jadwal-karyawan",          ...writeAccess, upload.single("file"), importJadwalKaryawan);
+router.post("/import-jadwal-karyawan-pin",      ...writeAccess, upload.single("file"), importJadwalKaryawanPin); // PIN-based
+router.post("/import-jadwal-karyawan-smartmatch", ...writeAccess, upload.single("file"), importJadwalKaryawanSmartMatch); // NEW: Smart NIK/id_absen
 
 // =============================================
 // JADWAL DW ROUTES
 // =============================================
-router.get("/jadwal-dw/list",                   getJadwalDW);
-router.post("/jadwal-dw/create",                createJadwalDW);
-router.post("/jadwal-dw/clear",                 clearJadwalDW);
-router.post("/import-jadwal-dw",                upload.single("file"), importJadwalDW);
-router.post("/import-jadwal-dw-pin",            upload.single("file"), importJadwalDWPin); // PIN-based
-router.post("/import-jadwal-dw-smartmatch",     upload.single("file"), importJadwalDWSmartMatch); // NEW: Smart NIK/id_absen
+router.get("/jadwal-dw/list",                   ...authenticatedRoles, getJadwalDW);
+router.post("/jadwal-dw/create",                ...writeAccess, createJadwalDW);
+router.post("/jadwal-dw/clear",                 ...writeAccess, clearJadwalDW);
+router.post("/import-jadwal-dw",                ...writeAccess, upload.single("file"), importJadwalDW);
+router.post("/import-jadwal-dw-pin",            ...writeAccess, upload.single("file"), importJadwalDWPin); // PIN-based
+router.post("/import-jadwal-dw-smartmatch",     ...writeAccess, upload.single("file"), importJadwalDWSmartMatch); // NEW: Smart NIK/id_absen
 
 // =============================================
 // INFORMASI JADWAL (consolidated to jadwal.js/jadwalController)
@@ -87,36 +88,36 @@ router.post("/import-jadwal-dw-smartmatch",     upload.single("file"), importJad
 // =============================================
 // KEHADIRAN ROUTES
 // =============================================
-router.post("/import-kehadiran",                upload.single("file"), importKehadiran);
+router.post("/import-kehadiran",                ...writeAccess, upload.single("file"), importKehadiran);
 
-router.get("/kehadiran-karyawan/available-periods",  getAvailablePeriodsKaryawan);
-router.get("/kehadiran-dw/available-periods",        getAvailablePeriodsDW);
+router.get("/kehadiran-karyawan/available-periods",  ...authenticatedRoles, getAvailablePeriodsKaryawan);
+router.get("/kehadiran-dw/available-periods",        ...authenticatedRoles, getAvailablePeriodsDW);
 
-router.delete("/kehadiran-karyawan/delete-period",   deleteKehadiranPeriodKaryawan);
-router.delete("/kehadiran-dw/delete-period",         deleteKehadiranPeriodDW);
+router.delete("/kehadiran-karyawan/delete-period",   ...writeAccess, deleteKehadiranPeriodKaryawan);
+router.delete("/kehadiran-dw/delete-period",         ...writeAccess, deleteKehadiranPeriodDW);
 
 // =============================================
 // CROSCEK ROUTES
 // =============================================
-router.get("/croscek-karyawan",               getCroscekKaryawan);
-router.get("/croscek-karyawan/sql",           getCroscekKaryawanSQL);
-router.post("/croscek-karyawan/sql/refresh", refreshMaterializedView);
-router.post("/croscek-karyawan/sql/recreate", recreateMaterializedView);
-router.get("/croscek-karyawan/diagnostics",  getCroscekDiagnostics);
-router.get("/croscek-karyawan/coverage", getJadwalCoverage);
-router.post("/croscek-karyawan",              saveCroscekKaryawan);
-router.post("/croscek-karyawan/clear",        clearCroscekKaryawan);
-router.get("/croscek-karyawan/final",         getCroscekKaryawanFinal);
+router.get("/croscek-karyawan",               ...authenticatedRoles, getCroscekKaryawan);
+router.get("/croscek-karyawan/sql",           ...authenticatedRoles, getCroscekKaryawanSQL);
+router.post("/croscek-karyawan/sql/refresh", ...writeAccess, refreshMaterializedView);
+router.post("/croscek-karyawan/sql/recreate", ...writeAccess, recreateMaterializedView);
+router.get("/croscek-karyawan/diagnostics",  ...authenticatedRoles, getCroscekDiagnostics);
+router.get("/croscek-karyawan/coverage", ...authenticatedRoles, getJadwalCoverage);
+router.post("/croscek-karyawan",              ...writeAccess, saveCroscekKaryawan);
+router.post("/croscek-karyawan/clear",        ...writeAccess, clearCroscekKaryawan);
+router.get("/croscek-karyawan/final",         ...authenticatedRoles, getCroscekKaryawanFinal);
 
-router.get("/croscek-dw",                     getCroscekDW);
-router.post("/croscek-dw",                    saveCroscekDW);
-router.post("/croscek-dw/clear",              clearCroscekDW);
-router.get("/croscek-dw/final",               getCroscekDWFinal);
+router.get("/croscek-dw",                     ...authenticatedRoles, getCroscekDW);
+router.post("/croscek-dw",                    ...writeAccess, saveCroscekDW);
+router.post("/croscek-dw/clear",              ...writeAccess, clearCroscekDW);
+router.get("/croscek-dw/final",               ...authenticatedRoles, getCroscekDWFinal);
 
 // =============================================
 // UTILITY ROUTES
 // =============================================
-router.get("/karyawan-select",                getKaryawanSelect);
-router.get("/rekap-hod",                      getRekapHOD);
+router.get("/karyawan-select",                ...authenticatedRoles, getKaryawanSelect);
+router.get("/rekap-hod",                      ...authenticatedRoles, getRekapHOD);
 
 export default router;

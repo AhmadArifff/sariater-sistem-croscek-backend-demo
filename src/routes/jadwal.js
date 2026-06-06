@@ -8,7 +8,7 @@ import {
   updateJadwal,
   deleteJadwal,
 } from "../controllers/jadwalController.js";
-import { authenticate, requireRole } from "../middleware/auth.js";
+import { adminOnly, adminGuestRead } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -33,21 +33,21 @@ const upload = multer({
 // =============================================
 
 // GET list dengan pagination & search (PUBLIC atau PROTECTED - sesuai kebijakan)
-router.get("/informasi-jadwal/list",             getJadwalList);
+router.get("/informasi-jadwal/list",             ...adminGuestRead, getJadwalList);
 
 // GET semua data tanpa pagination (untuk dropdown/referensi)
-router.get("/informasi-jadwal/list/all",         getJadwalListAll);
+router.get("/informasi-jadwal/list/all",         ...adminGuestRead, getJadwalListAll);
 
 // POST upload Excel (PROTECTED - admin only)
-router.post("/informasi-jadwal/upload",          authenticate, upload.single("file"), uploadJadwal);
+router.post("/informasi-jadwal/upload",          ...adminOnly, upload.single("file"), uploadJadwal);
 
 // POST create manual (PROTECTED - admin only)
-router.post("/informasi-jadwal/create",          authenticate, createJadwal);
+router.post("/informasi-jadwal/create",          ...adminOnly, createJadwal);
 
 // PUT update by kode (PROTECTED - admin only)
-router.put("/informasi-jadwal/update/:kode",     authenticate, updateJadwal);
+router.put("/informasi-jadwal/update/:kode",     ...adminOnly, updateJadwal);
 
 // DELETE by kode (PROTECTED - admin only)
-router.delete("/informasi-jadwal/delete/:kode",  authenticate, deleteJadwal);
+router.delete("/informasi-jadwal/delete/:kode",  ...adminOnly, deleteJadwal);
 
 export default router;

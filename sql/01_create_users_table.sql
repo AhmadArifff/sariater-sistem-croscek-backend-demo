@@ -17,9 +17,10 @@ CREATE TABLE IF NOT EXISTS users (
     
     -- Role-based access control
     -- admin = semua akses
-    -- staff = hanya bisa lihat croscek dan karyawan dw
+    -- staff = akses operasional sesuai sistem
+    -- guest = semua menu read-only dan export-only
     role VARCHAR(20) NOT NULL DEFAULT 'staff' 
-        CHECK (role IN ('admin', 'staff')),
+        CHECK (role IN ('admin', 'staff', 'guest')),
     
     -- Status
     is_active BOOLEAN NOT NULL DEFAULT true,

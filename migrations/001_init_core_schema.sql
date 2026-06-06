@@ -1,11 +1,9 @@
--- ============================================
--- ENABLE UUID extension (opsional, jika mau pakai UUID)
--- ============================================
+-- Core schema for Sistem Croscek Kehadiran Karyawan.
+-- Safe to run more than once.
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================
--- 0. TABEL KARYAWAN
--- ============================================
 CREATE TABLE IF NOT EXISTS karyawan (
     id_karyawan SERIAL PRIMARY KEY,
     nik VARCHAR(30),
@@ -15,12 +13,9 @@ CREATE TABLE IF NOT EXISTS karyawan (
     id_absen VARCHAR(50),
     kategori VARCHAR(50),
     UNIQUE (nik, nama),
-    UNIQUE (id_absen)  -- dari ALTER TABLE di Python
+    UNIQUE (id_absen)
 );
 
--- ============================================
--- 1. TABEL INFORMASI JADWAL (PARENT)
--- ============================================
 CREATE TABLE IF NOT EXISTS informasi_jadwal (
     kode VARCHAR(20) PRIMARY KEY,
     lokasi_kerja VARCHAR(50),
@@ -28,35 +23,29 @@ CREATE TABLE IF NOT EXISTS informasi_jadwal (
     jam_masuk TIME,
     jam_pulang TIME,
     keterangan VARCHAR(100),
-    "group" VARCHAR(50),   -- pakai double quote karena reserved word di PostgreSQL
+    "group" VARCHAR(50),
     status VARCHAR(50),
     kontrol VARCHAR(50),
-    UNIQUE (kode)          -- dari ALTER TABLE di Python
+    UNIQUE (kode)
 );
 
--- ============================================
--- 2. TABEL SHIFT_INFO (CHILD 1)
--- ============================================
 CREATE TABLE IF NOT EXISTS shift_info (
     kode VARCHAR(20) PRIMARY KEY,
     jam_masuk TIME NOT NULL,
     jam_pulang TIME NOT NULL,
-    lintas_hari BOOLEAN NOT NULL,  -- TINYINT(1) → BOOLEAN di PostgreSQL
+    lintas_hari BOOLEAN NOT NULL,
     CONSTRAINT fk_shiftinfo_kode
         FOREIGN KEY (kode) REFERENCES informasi_jadwal(kode)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- ============================================
--- 3. TABEL JADWAL KARYAWAN (CHILD 2)
--- ============================================
 CREATE TABLE IF NOT EXISTS jadwal_karyawan (
     no SERIAL PRIMARY KEY,
     id_karyawan INT NULL,
     nama VARCHAR(100),
     tanggal DATE,
     kode_shift VARCHAR(20),
-    shift_window_start TIMESTAMPTZ,   -- DATETIME → TIMESTAMPTZ di PostgreSQL
+    shift_window_start TIMESTAMPTZ,
     shift_window_end TIMESTAMPTZ,
     CONSTRAINT fk_jadwal_kode
         FOREIGN KEY (kode_shift) REFERENCES informasi_jadwal(kode)
@@ -66,9 +55,6 @@ CREATE TABLE IF NOT EXISTS jadwal_karyawan (
         ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- ============================================
--- 4. TABEL KEHADIRAN KARYAWAN (CHILD 3)
--- ============================================
 CREATE TABLE IF NOT EXISTS kehadiran_karyawan (
     tanggal_scan TIMESTAMPTZ NOT NULL,
     tanggal DATE NOT NULL,
@@ -94,9 +80,6 @@ CREATE TABLE IF NOT EXISTS kehadiran_karyawan (
         ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- ============================================
--- 4.1. TABEL CROSCEK
--- ============================================
 CREATE TABLE IF NOT EXISTS croscek (
     id_croscek SERIAL PRIMARY KEY,
     "Nama" VARCHAR(150) NOT NULL,
@@ -122,9 +105,6 @@ CREATE TABLE IF NOT EXISTS croscek (
     UNIQUE (id_karyawan, "Tanggal", "Kode_Shift")
 );
 
--- ============================================
--- 4.2. TABEL CROSCEK_DW
--- ============================================
 CREATE TABLE IF NOT EXISTS croscek_dw (
     id_croscek_dw SERIAL PRIMARY KEY,
     "Nama" VARCHAR(150) NOT NULL,
@@ -150,28 +130,38 @@ CREATE TABLE IF NOT EXISTS croscek_dw (
     UNIQUE (id_karyawan, "Tanggal", "Kode_Shift")
 );
 
--- ============================================
--- TABEL USERS (Admin, Staff, Guest)
--- ============================================
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(100) UNIQUE NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255),
     nama VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'staff'
         CHECK (role IN ('admin', 'staff', 'guest')),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (username)
 );
 
--- Index untuk lookup cepat
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_role  ON users(role);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_schema = 'public'
+          AND table_name = 'users'
+          AND constraint_type = 'CHECK'
+          AND constraint_name LIKE '%role%'
+    ) THEN
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    END IF;
+END $$;
 
--- ============================================
--- 5. INDEXES
--- ============================================
+ALTER TABLE users
+    ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'staff', 'guest')) NOT VALID;
+
+ALTER TABLE users VALIDATE CONSTRAINT users_role_check;
+
 CREATE INDEX IF NOT EXISTS idx_khd_nama_tanggal_scan ON kehadiran_karyawan (nama, tanggal_scan);
 CREATE INDEX IF NOT EXISTS idx_khd_nama_tgl ON kehadiran_karyawan (nama, tanggal);
 CREATE INDEX IF NOT EXISTS idx_khd_nik_tanggal ON kehadiran_karyawan (nip, tanggal);
@@ -184,7 +174,23 @@ CREATE INDEX IF NOT EXISTS idx_jk_id_tanggal ON jadwal_karyawan (id_karyawan, ta
 CREATE INDEX IF NOT EXISTS idx_jk_id_shift_tanggal ON jadwal_karyawan (id_karyawan, kode_shift, tanggal);
 CREATE INDEX IF NOT EXISTS idx_jk_tanggal_id ON jadwal_karyawan (tanggal, id_karyawan);
 
--- Buat fungsi helper agar tidak perlu tulis AT TIME ZONE berulang
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+CREATE OR REPLACE FUNCTION update_users_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_users_updated_at ON users;
+CREATE TRIGGER trigger_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_users_updated_at();
+
 CREATE OR REPLACE FUNCTION to_wib(ts TIMESTAMPTZ)
 RETURNS TIMESTAMP AS $$
     SELECT ts AT TIME ZONE 'Asia/Jakarta'

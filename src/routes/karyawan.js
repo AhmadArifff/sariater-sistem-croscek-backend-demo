@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { adminOnly, adminAndStaf } from "../middleware/auth.js";
+import { adminOnly, adminGuestRead } from "../middleware/auth.js";
 import {
   getKaryawanListNama,
   getDWListNama,
@@ -79,15 +79,15 @@ const upload = multer({
 // // DELETE (pakai endpoint karyawan/delete — sama seperti frontend)
 
 // Comment semua ...adminOnly sementara
-router.get("/karyawan/list/nama",   getKaryawanListNama);
-router.get("/karyawan/list",        getKaryawanList);
-router.post("/karyawan/upload",     upload.single("file"), uploadKaryawan);
-router.post("/karyawan/create",     createKaryawan);
-router.put("/karyawan/update/:nik", updateKaryawan);
-router.delete("/karyawan/delete/:nik", deleteKaryawan);
-router.get("/dw/list/nama",         getDWListNama);
-router.get("/dw/list",              getDWList);
-router.post("/dw/upload",           upload.single("file"), uploadDW);
-router.post("/dw/create",           createDW);
+router.get("/karyawan/list/nama",   ...adminGuestRead, getKaryawanListNama);
+router.get("/karyawan/list",        ...adminGuestRead, getKaryawanList);
+router.post("/karyawan/upload",     ...adminOnly, upload.single("file"), uploadKaryawan);
+router.post("/karyawan/create",     ...adminOnly, createKaryawan);
+router.put("/karyawan/update/:nik", ...adminOnly, updateKaryawan);
+router.delete("/karyawan/delete/:nik", ...adminOnly, deleteKaryawan);
+router.get("/dw/list/nama",         ...adminGuestRead, getDWListNama);
+router.get("/dw/list",              ...adminGuestRead, getDWList);
+router.post("/dw/upload",           ...adminOnly, upload.single("file"), uploadDW);
+router.post("/dw/create",           ...adminOnly, createDW);
 
 export default router;
