@@ -443,12 +443,17 @@ async function importJadwalLogic(buffer, kategori) {
   // ── Ambil data karyawan dari DB ──────────────────────────────────────────
   const { data: karyawanData } = await supabase
     .from("karyawan")
-    .select("id_karyawan, nik, nama")
+    .select("id_karyawan, nik, id_absen, nama")
     .eq("kategori", kategori);
 
   const karyawanDict = {};
   for (const k of karyawanData || []) {
-    karyawanDict[String(k.nik).trim()] = { id: k.id_karyawan, nama: k.nama };
+    if (k.nik) {
+      karyawanDict[String(k.nik).trim()] = { id: k.id_karyawan, nama: k.nama };
+    }
+    if (k.id_absen) {
+      karyawanDict[String(k.id_absen).trim()] = { id: k.id_karyawan, nama: k.nama };
+    }
   }
 
   console.log(`👥 Total ${kategori} di DB: ${Object.keys(karyawanDict).length}`);
@@ -506,7 +511,7 @@ async function importJadwalLogic(buffer, kategori) {
 
     if (!nik) {
       if (namaExcel) {
-        notFoundReason = "NIK kosong";
+        notFoundReason = "ID ABSEN/NIK kosong";
         notFoundEmployees.push({ nik: "", nama: namaExcel, error: notFoundReason });
       }
     } else if (karyawanDict[nik]) {
@@ -556,7 +561,7 @@ async function importJadwalLogic(buffer, kategori) {
   if (validNikInFile.length === 0) {
     return {
       error: "Tidak ada karyawan valid di file upload",
-      hint: `Pastikan kolom NIK (kolom ${nikColIdx}) berisi NIK yang terdaftar di database sebagai kategori '${kategori}'.`,
+      hint: `Pastikan kolom ID ABSEN/NIK (kolom ${nikColIdx}) berisi id_absen atau NIK yang terdaftar di database sebagai kategori '${kategori}'.`,
       not_found_employees: notFoundEmployees.slice(0, 20),
       invalid_codes: [],
       not_found_schedule_count: notFoundScheduleRows.length + notFoundScheduleRowsTruncatedCount,
@@ -734,7 +739,7 @@ export async function getJadwalKaryawan(req, res) {
     const data = await fetchAllRowsInBatches((offset, batchSize) =>
       supabase
         .from("jadwal_karyawan")
-        .select("no, tanggal, kode_shift, karyawan!inner(nik, nama, kategori)")
+        .select("no, tanggal, kode_shift, karyawan!inner(nik, id_absen, nama, kategori)")
         .eq("karyawan.kategori", "karyawan")
         .order("no", { ascending: true })
         .range(offset, offset + batchSize - 1)
@@ -744,6 +749,7 @@ export async function getJadwalKaryawan(req, res) {
       (data || []).map((r) => ({
         no: r.no,
         nik: r.karyawan?.nik,
+        id_absen: r.karyawan?.id_absen,
         nama: r.karyawan?.nama,
         tanggal: r.tanggal ? String(r.tanggal) : null,
         kode_shift: r.kode_shift,
@@ -763,7 +769,7 @@ export async function getJadwalDW(req, res) {
     const data = await fetchAllRowsInBatches((offset, batchSize) =>
       supabase
         .from("jadwal_karyawan")
-        .select("no, tanggal, kode_shift, karyawan!inner(nik, nama, kategori)")
+        .select("no, tanggal, kode_shift, karyawan!inner(nik, id_absen, nama, kategori)")
         .eq("karyawan.kategori", "dw")
         .order("no", { ascending: true })
         .range(offset, offset + batchSize - 1)
@@ -773,6 +779,7 @@ export async function getJadwalDW(req, res) {
       (data || []).map((r) => ({
         no: r.no,
         nik: r.karyawan?.nik,
+        id_absen: r.karyawan?.id_absen,
         nama: r.karyawan?.nama,
         tanggal: r.tanggal ? String(r.tanggal) : null,
         kode_shift: r.kode_shift,
