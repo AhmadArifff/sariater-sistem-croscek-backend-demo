@@ -41,6 +41,26 @@ function isOffDay(kodeShift) {
 function toMinutes(t) {
   if (!t) return null;
   const str = String(t).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}[T\s]/.test(str)) {
+    const parsed = new Date(str);
+    if (!Number.isNaN(parsed.getTime())) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        hourCycle: 'h23'
+      }).formatToParts(parsed);
+      const getPart = (type) => Number(parts.find((part) => part.type === type)?.value || 0);
+      const hh = getPart('hour') % 24;
+      const mm = getPart('minute');
+      const ss = getPart('second');
+      return hh * 60 + mm + (ss > 0 ? 1 : 0);
+    }
+  }
+
   const match = str.match(/(\d{1,2}):(\d{2}):?(\d{2})?/);
   if (!match) return null;
   const hh = parseInt(match[1]);
@@ -115,15 +135,21 @@ function isLateArrival(row) {
   if (status !== 'HADIR') return false;
   if (isActualKosongHadir(row)) return false;
 
+  if (isTerlambatByStatusMasuk(row.Status_Masuk)) {
+    const selisihPulang = getSelisihPulangMenit(row);
+    return !(selisihPulang !== null && selisihPulang >= 60);
+  }
+
+  const statusMasuk = String(row.Status_Masuk || '').toUpperCase().trim();
+  if (statusMasuk.includes('TEPAT')) return false;
+
   const selisihMasuk  = getSelisihMasukMenit(row);
   const selisihPulang = getSelisihPulangMenit(row);
 
   if (selisihMasuk !== null) {
-    if (Math.abs(selisihMasuk) > 120) return false;
     const telatMin = Math.max(0, selisihMasuk);
     if (telatMin <= 4) return false;
-    const kompensasi = Math.ceil(telatMin / 60) * 60;
-    if (selisihPulang !== null && selisihPulang >= kompensasi) return false;
+    if (selisihPulang !== null && selisihPulang >= 60) return false;
     return true;
   }
 
@@ -146,8 +172,9 @@ function getCheckOutTime(record) {
 }
 
 function getDelayIndicator(record) {
-  const status = (record.Status_Kehadiran || '').toLowerCase();
-  if (status.includes('terlambat') || status.includes('late')) return 'orange';
+  const status = `${record.Status_Kehadiran || ''} ${record.Status_Masuk || ''}`.toLowerCase();
+  if (status.includes('telat') || status.includes('terlambat') || status.includes('late')) return 'orange';
+  if (/\btl\b/i.test(status)) return 'orange';
   if (status.includes('sakit') || status.includes('izin') || status.includes('cuti')) return 'orange';
   if (status.includes('hadir') || status.includes('masuk') || status.includes('valid')) return 'green';
   if (record.Prediksi_Actual_Masuk) return 'orange';
@@ -200,7 +227,7 @@ export async function getSummary(req, res) {
           .from('croscek')
           .select(
             '"id_karyawan", "Kode_Shift", "Status_Kehadiran", "Status_Masuk", ' +
-            '"Jadwal_Masuk", "Jadwal_Pulang", "Actual_Masuk", "Actual_Pulang"'
+            '"Status_Pulang", "Jadwal_Masuk", "Jadwal_Pulang", "Actual_Masuk", "Actual_Pulang"'
           )
           .gte('"Tanggal"', dateStart)
           .lte('"Tanggal"', dateEnd)
